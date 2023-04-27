@@ -1,0 +1,75 @@
+- name: Allow port 80 to UFW
+  community.general.ufw:
+          rule: allow
+          port: 80
+          proto: tcp
+
+- name: Allow port 8080 to UFW
+  community.general.ufw:
+          rule: allow
+          port: 8080
+          proto: tcp
+
+- name: Allow port 2233 to UFW
+  community.general.ufw:
+          rule: allow
+          port: 2233
+          proto: tcp
+
+- name: Update package list
+  ansible.builtin.yum:
+          update_cache: true
+
+- name: Install Curl
+  ansible.builtin.yum:
+          name: curl
+          state: latest
+
+- name: Setup alternative and use SSH port
+  ansible.builtin.lineinfile:
+          dest: "/etc/ssh/sshd_config"
+          regexp: "^Port"
+          line: "Port 2222"
+  notify: "Restart sshd"
+
+- name: Allow auth by key pub SSH
+  ansible.builtin.lineinfile:
+          dest: "/etc/ssh/sshd_config"
+          regexp: "^PubkeyAuthentication"
+          line: "PubkeyAuthentication yes"
+  notify: "Restart sshd"
+
+- name: Create user and generate pubkey
+  ansible.builtin.user:
+          name: user
+          comment: IloveUser:*
+          uid: 2212
+          group: sudo
+          createhome: yes
+          home: /home/user
+          generate_ssh_key: yes
+          ssh_key_bits: 2048
+          ssh_key_file: .ssh/id_rsa
+
+- name: Download and install Docker
+  ansible.builtin.yum:
+          name: docker
+          state: latest
+
+- name: Run docker-compose
+  ansible.builtin.shell: docker-compose.sh
+
+- name: Reload SSH
+  ansible.builtin.systemd:
+          name: sshd
+          states: restarted
+
+- name: Reload UFW
+  ansible.builtin.sytemd:
+          name: ufw
+          states: restarted
+
+- name: reboot this
+  ansible.builtin.reboot:
+
+
